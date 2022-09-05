@@ -1,6 +1,8 @@
 (ns flk.core
   (:require [compojure.route :as route]
             [clojure.spec.alpha :as s]
+            [clojure.string :as str]
+            [json-path :as jp]
             [cheshire.core :refer :all])
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
@@ -16,10 +18,51 @@
         compojure.handler)
   (:gen-class))
 
+(def s-map "{\"field1.field3\": \"field2.field4\",\"field5.field7\": \"field6.field8\"}" )
+
+(def json-source {:field1
+                  {:field3
+                   {:field10 "ccc"}}
+                  :field5 {:field7 "bbb"
+                           }})
+
+(get-in json-source (map keyword(str/split "field1.field3" #"\.")))
+(assoc-in json-source (map keyword(str/split "field1.field3" #"\.")) "ss")
+(assoc-in {} [:field1 :field2] "sss")
+
+(defn assoc-in* [path v]
+  (assoc-in {} path v))
+
+;;(apply hash-map (map assoc-in* [[:k4 :k5] [:k1]] [s "cc"]))
+
+(defn mapping-fields [fun source]
+  (map fun (seq (:mapping (parse-string source true)))))
+
+(defn mapping-fields-json [fun source]
+  (map fun (seq  (parse-string s-map))))
+
+(defn to-keywords-path [fun source]
+   (map (fn [e] (map keyword (str/split e #"\."))) (mapping-fields-json fun source)))
+
+(defn map-to-flat [mapping from]
+  (zipmap (mapping-fields second mapping)
+          (map
+           (fn [e] (get from e))
+           (mapping-fields first mapping))))
+
+(defn map-to-inner [mapping source]
+  (into {}
+         (map assoc-in*
+              (to-keywords-path second mapping)
+              (map (fn [e] (get-in source e)) (to-keywords-path first mapping)))))
+
+(defn map-function-on-map-keys [m f]
+    (zipmap (map f (keys m)) (vals m)))
+
 (defn create-doc [request]
   (let [{:keys [body]} request]
       {:status 200
-     :body (map-to s-map body)}))
+     :body (map-to-inner s-map body)}))
 
 (defroutes compojure-handler
   (POST "/doc" req (create-doc req))
@@ -37,19 +80,5 @@
   [] (jetty/run-jetty app {:port 3000, :join? false}))
 
 
-(def s-map "{\"mapping\" : {\"field1\": \"field2\",\"field3\": \"field4\",\"field5\": \"field6\"}}")
-(def j {:field1 "aaa" :field3 "bbb" :field5 "ccc"})
-(get j :field1)
 
-(defn map-to [mapping from]
-  (zipmap (mapping-fields second mapping)
-          (map
-           (fn [e] (get from e))
-           (mapping-fields first mapping))))
-
-
-(defn mapping-fields [fun source]
-  (map fun (seq (:mapping (parse-string source true)))))
-
-
-;;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
+;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))

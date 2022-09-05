@@ -15,7 +15,8 @@
                  [ring/ring-jetty-adapter "1.8.2"]
                  [honeysql "1.0.461"]
                  [com.github.seancorfield/next.jdbc "1.2.659"]
-                 [cheshire "5.11.0"]]
+                 [cheshire "5.11.0"]
+                 [json-path "2.2.0"]]
   :plugins [[lein-ring "0.12.5"]]
   ;; :profiles {:dev {:resource-paths ["resources/dev"]}
   ;;            :stage {:resource-paths ["resources/stage"]}}
