@@ -64,14 +64,13 @@
 (defn get-mapping [id]
   (:value (first (get-mapping-by-id id))))
 
-(get-mapping "1")
-
-
 (defn create-mapping-db [request]
   (let [{:keys [body]} request 
         res (add-to-table :mapping body)]
-    {:data res}))
+    res))
 
+
+(add-to-table :mapping "")
 
 (defn delete-mapping-by-id [id]
       (delete-table :mapping id))

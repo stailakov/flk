@@ -40,7 +40,7 @@
   (map fun (seq (:mapping (parse-string source true)))))
 
 (defn mapping-fields-json [fun source]
-  (map fun (seq  (parse-string s-map))))
+  (map fun (seq  (parse-string source))))
 
 (defn to-keywords-path [fun source]
    (map (fn [e] (map keyword (str/split e #"\."))) (mapping-fields-json fun source)))
@@ -62,13 +62,30 @@
 (defn map-function-on-map-keys [m f]
     (zipmap (map f (keys m)) (vals m)))
 
+(defn map-chain [fns value]
+ ((apply comp fns) value))
+
+(defn map-map-chain [fns values]
+  (map (fn [e] (map-chain fns e)) values))
+
+
+(def func-map {:upper clojure.string/upper-case :trim clojure.string/trim})
+
+(defn get-fun [f-name]
+  (f-name func-map))
+
+(defn k->fun [keys]
+  (map get-fun keys))
+
+(map-map-chain (k->fun [:trim :upper])["aaa " "bbb "])
+
 (defn map-with [request]
   (let [{:keys [body route-params]} request
         {:keys [id]} route-params]
       {:status 200
      :body (map-to-inner (data/get-mapping id) body)}))
 
-(map-to-inner (data/get-mapping "1") json-source)
+(map-to-inner (data/get-mapping "3") json-source)
 
 
 (defn get-mapping-contr [id]
@@ -76,9 +93,15 @@
    :body {:data
           (data/get-mapping id)}})
 
+(defn create-mapping-contr [req]
+  {:status 200
+   :body {:data
+          (data/create-mapping-db req)}})
+
 
 (defroutes compojure-handler
   (GET "/mapping/:id" [id] (get-mapping-contr id))
+  (POST "/mapping/" req (create-mapping-contr req))
   (POST "/map-with/:id" req (map-with req))
   (route/not-found "<h1>Not found!</h1>"))
 
