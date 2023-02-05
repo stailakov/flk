@@ -34,8 +34,6 @@
 (defn assoc-in* [path v]
   (assoc-in {} path v))
 
-;;(apply hash-map (map assoc-in* [[:k4 :k5] [:k1]] [s "cc"]))
-
 (defn mapping-fields [fun source]
   (map fun (seq (:mapping (parse-string source true)))))
 
@@ -72,20 +70,32 @@
 (def func-map {:upper clojure.string/upper-case :trim clojure.string/trim})
 
 (defn get-fun [f-name]
-  (f-name func-map))
+  (or ((keyword f-name) func-map) identity))
 
 (defn k->fun [keys]
   (map get-fun keys))
 
-(map-map-chain (k->fun [:trim :upper])["aaa " "bbb "])
+(defn eval-chain-funcs [value functions]
+  (map-map-chain (k->fun functions) value))
+
+
+(defn eval-chain [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    {:statys 200
+     :body (eval-chain-funcs value functions)}
+    ))
+
+(defn test [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    (println {:value (str value)})))
 
 (defn map-with [request]
   (let [{:keys [body route-params]} request
         {:keys [id]} route-params]
       {:status 200
      :body (map-to-inner (data/get-mapping id) body)}))
-
-(map-to-inner (data/get-mapping "3") json-source)
 
 
 (defn get-mapping-contr [id]
@@ -103,6 +113,7 @@
   (GET "/mapping/:id" [id] (get-mapping-contr id))
   (POST "/mapping/" req (create-mapping-contr req))
   (POST "/map-with/:id" req (map-with req))
+  (POST "/eval-chain" req (eval-chain req))
   (route/not-found "<h1>Not found!</h1>"))
 
 (def app (-> compojure-handler
