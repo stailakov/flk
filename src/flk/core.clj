@@ -3,7 +3,8 @@
             [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [json-path :as jp]
-            [cheshire.core :refer :all])
+            [cheshire.core :refer :all]
+            [flk.data :as data])
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
         ring.middleware.session
@@ -44,6 +45,8 @@
 (defn to-keywords-path [fun source]
    (map (fn [e] (map keyword (str/split e #"\."))) (mapping-fields-json fun source)))
 
+(to-keywords-path first s-map)
+
 (defn map-to-flat [mapping from]
   (zipmap (mapping-fields second mapping)
           (map
@@ -59,13 +62,24 @@
 (defn map-function-on-map-keys [m f]
     (zipmap (map f (keys m)) (vals m)))
 
-(defn create-doc [request]
-  (let [{:keys [body]} request]
+(defn map-with [request]
+  (let [{:keys [body route-params]} request
+        {:keys [id]} route-params]
       {:status 200
-     :body (map-to-inner s-map body)}))
+     :body (map-to-inner (data/get-mapping id) body)}))
+
+(map-to-inner (data/get-mapping "1") json-source)
+
+
+(defn get-mapping-contr [id]
+  {:status 200
+   :body {:data
+          (data/get-mapping id)}})
+
 
 (defroutes compojure-handler
-  (POST "/doc" req (create-doc req))
+  (GET "/mapping/:id" [id] (get-mapping-contr id))
+  (POST "/map-with/:id" req (map-with req))
   (route/not-found "<h1>Not found!</h1>"))
 
 (def app (-> compojure-handler
@@ -81,4 +95,5 @@
 
 
 
-;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
+(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
+
