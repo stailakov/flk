@@ -72,6 +72,9 @@
 (defn map-map-check-chain [fns values]
   (map (fn [e] (map-check-chain fns e)) values))
 
+(defn get-explain [predicate]
+  (partial s/explain predicate))
+
 
 (def func-map {:upper clojure.string/upper-case :trim clojure.string/trim
         })
@@ -79,10 +82,7 @@
 (def check-map {:int? (get-explain integer?) :trim clojure.string/trim
         })
 
-(defn get-explain [predicate]
-  (partial s/explain predicate))
 
-(with-out-str ((get-explain integer?) "ss") (println "sasa"))
 
 
 (defn get-fun [f-name f-map]
