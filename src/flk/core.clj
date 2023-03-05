@@ -7,6 +7,7 @@
             [flk.data :as data]
             [flk.checker :as ch]
             [flk.applyer :as a]
+            [flk.mapper :as mapper]
             )
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
@@ -22,51 +23,12 @@
         compojure.handler)
   (:gen-class))
 
-(def s-map "{\"field1.field3\": \"field2.field4\",\"field5.field7\": \"field6.field8\"}")
-
-
-
-(def json-source {:field1
-                  {:field3
-                   {:field10 "ccc"}}
-                  :field5 {:field7 "bbb"
-                           }})
-
-(get-in json-source (map keyword(str/split "field1.field3" #"\.")))
-(assoc-in json-source (map keyword(str/split "field1.field3" #"\.")) "ss")
-(assoc-in {} [:field1 :field2] "sss")
-
-(defn assoc-in* [path v]
-  (assoc-in {} path v))
-
-(defn mapping-fields [fun source]
-  (map fun (seq (:mapping (parse-string source true)))))
-
-(defn mapping-fields-json [fun source]
-  (map fun (seq  (parse-string source))))
-
-(defn to-keywords-path [fun source]
-   (map (fn [e] (map keyword (str/split e #"\."))) (mapping-fields-json fun source)))
-
-(defn map-to-flat [mapping from]
-  (zipmap (mapping-fields second mapping)
-          (map
-           (fn [e] (get from e))
-           (mapping-fields first mapping))))
-
-(defn map-to-inner [mapping source]
-  (into {}
-         (map assoc-in*
-              (to-keywords-path second mapping)
-              (map (fn [e] (get-in source e)) (to-keywords-path first mapping)))))
-
 (defn eval-chain [req]
   (let [{:keys [body]} req
         {:keys [value functions]} body]
     {:statys 200
      :body (a/eval-chain-funcs value functions)}
     ))
-
 
 (defn eval-chain-predicates [req]
   (let [{:keys [body]} req
@@ -84,7 +46,7 @@
   (let [{:keys [body route-params]} request
         {:keys [id]} route-params]
       {:status 200
-     :body (map-to-inner (data/get-mapping id) body)}))
+     :body (mapper/map-to-inner (data/get-mapping id) body)}))
 
 
 (defn get-mapping-contr [id]
