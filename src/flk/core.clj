@@ -4,7 +4,9 @@
             [clojure.string :as str]
             [json-path :as jp]
             [cheshire.core :refer :all]
-            [flk.data :as data])
+            [flk.data :as data]
+            [flk.checker :as ch]
+            )
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
         ring.middleware.session
@@ -63,27 +65,11 @@
 (defn map-chain [fns value]
  ((apply comp fns) value))
 
-(defn map-check-chain [fns value]
- (with-out-str ((apply comp fns) value)))
-
 (defn map-map-chain [fns values]
   (map (fn [e] (map-chain fns e)) values))
 
-(defn map-map-check-chain [fns values]
-  (map (fn [e] (map-check-chain fns e)) values))
-
-(defn get-explain [predicate]
-  (partial s/explain predicate))
-
-
 (def func-map {:upper clojure.string/upper-case :trim clojure.string/trim
         })
-
-(def check-map {:int? (get-explain integer?) :trim clojure.string/trim
-        })
-
-
-
 
 (defn get-fun [f-name f-map]
   (or ((keyword f-name) f-map) identity))
@@ -93,10 +79,6 @@
 
 (defn eval-chain-funcs [value functions f-map]
   (map-map-chain (k->fun functions f-map) value))
-
-(defn eval-checks [value functions]
-    (map-map-check-chain (k->fun functions check-map) value))
-
 
 (defn eval-chain [req]
   (let [{:keys [body]} req
@@ -110,7 +92,7 @@
   (let [{:keys [body]} req
         {:keys [value functions]} body]
     {:statys 200
-     :body (eval-checks value functions)}
+     :body (ch/eval-checks value functions)}
     ))
 
 (defn test [req]
