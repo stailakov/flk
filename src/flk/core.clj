@@ -19,7 +19,9 @@
         compojure.handler)
   (:gen-class))
 
-(def s-map "{\"field1.field3\": \"field2.field4\",\"field5.field7\": \"field6.field8\"}" )
+(def s-map "{\"field1.field3\": \"field2.field4\",\"field5.field7\": \"field6.field8\"}")
+
+
 
 (def json-source {:field1
                   {:field3
@@ -43,8 +45,6 @@
 (defn to-keywords-path [fun source]
    (map (fn [e] (map keyword (str/split e #"\."))) (mapping-fields-json fun source)))
 
-(to-keywords-path first s-map)
-
 (defn map-to-flat [mapping from]
   (zipmap (mapping-fields second mapping)
           (map
@@ -63,27 +63,54 @@
 (defn map-chain [fns value]
  ((apply comp fns) value))
 
+(defn map-check-chain [fns value]
+ (with-out-str ((apply comp fns) value)))
+
 (defn map-map-chain [fns values]
   (map (fn [e] (map-chain fns e)) values))
 
+(defn map-map-check-chain [fns values]
+  (map (fn [e] (map-check-chain fns e)) values))
 
-(def func-map {:upper clojure.string/upper-case :trim clojure.string/trim})
 
-(defn get-fun [f-name]
-  (or ((keyword f-name) func-map) identity))
+(def func-map {:upper clojure.string/upper-case :trim clojure.string/trim
+        })
 
-(defn k->fun [keys]
-  (map get-fun keys))
+(def check-map {:int? (get-explain integer?) :trim clojure.string/trim
+        })
 
-(defn eval-chain-funcs [value functions]
-  (map-map-chain (k->fun functions) value))
+(defn get-explain [predicate]
+  (partial s/explain predicate))
+
+(with-out-str ((get-explain integer?) "ss") (println "sasa"))
+
+
+(defn get-fun [f-name f-map]
+  (or ((keyword f-name) f-map) identity))
+
+(defn k->fun [keys f-map]
+  (map (fn [e] (get-fun e f-map)) keys))
+
+(defn eval-chain-funcs [value functions f-map]
+  (map-map-chain (k->fun functions f-map) value))
+
+(defn eval-checks [value functions]
+    (map-map-check-chain (k->fun functions check-map) value))
 
 
 (defn eval-chain [req]
   (let [{:keys [body]} req
         {:keys [value functions]} body]
     {:statys 200
-     :body (eval-chain-funcs value functions)}
+     :body (eval-chain-funcs value functions func-map)}
+    ))
+
+
+(defn eval-chain-predicates [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    {:statys 200
+     :body (eval-checks value functions)}
     ))
 
 (defn test [req]
@@ -114,6 +141,7 @@
   (POST "/mapping/" req (create-mapping-contr req))
   (POST "/map-with/:id" req (map-with req))
   (POST "/eval-chain" req (eval-chain req))
+  (POST "/check" req (eval-chain-predicates req))
   (route/not-found "<h1>Not found!</h1>"))
 
 (def app (-> compojure-handler

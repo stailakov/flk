@@ -12,7 +12,6 @@
    :password "postgres"
     }
 ))
-
   
   (defn execute [querry]
     (jdbc/execute!
@@ -68,9 +67,6 @@
   (let [{:keys [body]} request 
         res (add-to-table :mapping body)]
     res))
-
-
-(add-to-table :mapping "")
 
 (defn delete-mapping-by-id [id]
       (delete-table :mapping id))
