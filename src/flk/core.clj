@@ -6,6 +6,7 @@
             [cheshire.core :refer :all]
             [flk.data :as data]
             [flk.checker :as ch]
+            [flk.applyer :as a]
             )
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
@@ -59,32 +60,11 @@
               (to-keywords-path second mapping)
               (map (fn [e] (get-in source e)) (to-keywords-path first mapping)))))
 
-(defn map-function-on-map-keys [m f]
-    (zipmap (map f (keys m)) (vals m)))
-
-(defn map-chain [fns value]
- ((apply comp fns) value))
-
-(defn map-map-chain [fns values]
-  (map (fn [e] (map-chain fns e)) values))
-
-(def func-map {:upper clojure.string/upper-case :trim clojure.string/trim
-        })
-
-(defn get-fun [f-name f-map]
-  (or ((keyword f-name) f-map) identity))
-
-(defn k->fun [keys f-map]
-  (map (fn [e] (get-fun e f-map)) keys))
-
-(defn eval-chain-funcs [value functions f-map]
-  (map-map-chain (k->fun functions f-map) value))
-
 (defn eval-chain [req]
   (let [{:keys [body]} req
         {:keys [value functions]} body]
     {:statys 200
-     :body (eval-chain-funcs value functions func-map)}
+     :body (a/eval-chain-funcs value functions)}
     ))
 
 
@@ -138,6 +118,5 @@
   [] (jetty/run-jetty app {:port 3000, :join? false}))
 
 
-
-(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
+;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
 

@@ -8,13 +8,11 @@
 
 (def check-map {:int? (get-explain integer?) })
 
-
 (defn map-check-chain [fns value]
  (with-out-str ((apply comp fns) value)))
 
 (defn map-map-check-chain [fns values]
   (map (fn [e] (map-check-chain fns e)) values))
-
 
 (defn get-fun [f-name f-map]
   (or ((keyword f-name) f-map) identity))
