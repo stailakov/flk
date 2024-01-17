@@ -1,7 +1,14 @@
 (ns flk.core
   (:require [compojure.route :as route]
             [clojure.spec.alpha :as s]
-            [cheshire.core :refer :all])
+            [clojure.string :as str]
+            [json-path :as jp]
+            [cheshire.core :refer :all]
+            [flk.data :as data]
+            [flk.checker :as ch]
+            [flk.applyer :as a]
+            [flk.mapper :as mapper]
+            )
   (:use [ring.adapter.jetty :as jetty]
         ring.middleware.content-type
         ring.middleware.session
@@ -16,13 +23,49 @@
         compojure.handler)
   (:gen-class))
 
-(defn create-doc [request]
-  (let [{:keys [body]} request]
+(defn eval-chain [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    {:statys 200
+     :body (a/eval-chain-funcs value functions)}
+    ))
+
+(defn eval-chain-predicates [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    {:statys 200
+     :body (ch/eval-checks value functions)}
+    ))
+
+(defn test [req]
+  (let [{:keys [body]} req
+        {:keys [value functions]} body]
+    (println {:value (str value)})))
+
+(defn map-with [request]
+  (let [{:keys [body route-params]} request
+        {:keys [id]} route-params]
       {:status 200
-     :body (map-to s-map body)}))
+     :body (mapper/map-to-inner (data/get-mapping id) body)}))
+
+
+(defn get-mapping-contr [id]
+  {:status 200
+   :body {:data
+          (data/get-mapping id)}})
+
+(defn create-mapping-contr [req]
+  {:status 200
+   :body {:data
+          (data/create-mapping-db req)}})
+
 
 (defroutes compojure-handler
-  (POST "/doc" req (create-doc req))
+  (GET "/mapping/:id" [id] (get-mapping-contr id))
+  (POST "/mapping/" req (create-mapping-contr req))
+  (POST "/map-with/:id" req (map-with req))
+  (POST "/eval-chain" req (eval-chain req))
+  (POST "/check" req (eval-chain-predicates req))
   (route/not-found "<h1>Not found!</h1>"))
 
 (def app (-> compojure-handler
@@ -37,19 +80,5 @@
   [] (jetty/run-jetty app {:port 3000, :join? false}))
 
 
-(def s-map "{\"mapping\" : {\"field1\": \"field2\",\"field3\": \"field4\",\"field5\": \"field6\"}}")
-(def j {:field1 "aaa" :field3 "bbb" :field5 "ccc"})
-(get j :field1)
+;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
 
-(defn map-to [mapping from]
-  (zipmap (mapping-fields second mapping)
-          (map
-           (fn [e] (get from e))
-           (mapping-fields first mapping))))
-
-
-(defn mapping-fields [fun source]
-  (map fun (seq (:mapping (parse-string source true)))))
-
-
-;;(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
